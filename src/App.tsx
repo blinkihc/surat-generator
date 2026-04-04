@@ -33,7 +33,7 @@ import {
   Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from './lib/utils';
+import { cn, formatNumber } from './lib/utils';
 import { formatTerbilang } from './lib/terbilang';
 import { PBBHandoverData, initialData, SavedTemplate, TemplateType, AppSettings, initialSettings } from './types';
 import html2canvas from 'html2canvas';
@@ -57,7 +57,7 @@ const SkeletonInput = () => (
   <div className="w-full h-[42px] bg-slate-100 rounded-xl animate-pulse border border-slate-100" />
 );
 
-const DocumentPreview = ({ 
+  const DocumentPreview = ({ 
   data, 
   settings, 
   documentRef,
@@ -70,8 +70,8 @@ const DocumentPreview = ({
   onUpdate?: (path: string, value: string) => void,
   onUpdateSettings?: (path: string, value: string) => void
 }) => {
-  const Editable = ({ value, path, className, placeholder = '................................', isSettings = false }: { value: string | undefined, path: string, className?: string, placeholder?: string, isSettings?: boolean }) => {
-    const displayValue = value || placeholder;
+  const Editable = ({ value, path, className, placeholder = '................................', isSettings = false, formatter }: { value: string | undefined, path: string, className?: string, placeholder?: string, isSettings?: boolean, formatter?: (v: string | undefined) => string }) => {
+    const displayValue = formatter ? formatter(value) : (value || placeholder);
     const updateFn = isSettings ? onUpdateSettings : onUpdate;
     if (!updateFn) return <span className={className}>{displayValue}</span>;
     return (
@@ -130,7 +130,7 @@ const DocumentPreview = ({
           </div>
 
           <p className="mb-4 text-justify">
-            Pada hari ini <span className="font-bold"><Editable value={data.hari} path="hari" placeholder="............" /></span> tanggal <span className="font-bold"><Editable value={data.tanggal} path="tanggal" placeholder="............" /></span> bulan <span className="font-bold"><Editable value={data.bulan} path="bulan" placeholder="............" /></span> tahun <span className="font-bold"><Editable value={data.tahun} path="tahun" placeholder="............" /></span>, yang bertanda tangan di bawah ini:
+            Pada hari ini <span className="font-bold"><Editable value={data.hari} path="hari" placeholder="............" /></span> tanggal <span className="font-bold"><Editable value={data.tanggal} path="tanggal" placeholder="............" /></span> (<span className="italic">{formatTerbilang(data.tanggal) || '............'}</span>) bulan <span className="font-bold"><Editable value={data.bulan} path="bulan" placeholder="............" /></span> tahun <span className="font-bold"><Editable value={data.tahun} path="tahun" placeholder="............" /></span> (<span className="italic">{formatTerbilang(data.tahun) || '............'}</span>), yang bertanda tangan di bawah ini:
           </p>
 
           <div className="space-y-4 mb-4 pl-4">
@@ -173,15 +173,15 @@ const DocumentPreview = ({
             PIHAK PERTAMA menyerahkan kepada PIHAK KEDUA dan PIHAK KEDUA menerima dari PIHAK PERTAMA Surat Pemberitahuan Pajak Terhutang (SPPT) dan buku DHKP 1, 2 dan 3 Pajak Bumi dan Bangunan (PBB) Sektor Perdesaan dan Perkotaan untuk wilayah Kecamatan <Editable value={data.detailPenyerahan.kecamatan} path="detailPenyerahan.kecamatan" placeholder="................" /> Kabupaten Ogan Komering Ulu Selatan Tahun <Editable value={data.detailPenyerahan.tahunPajak} path="detailPenyerahan.tahunPajak" placeholder="............" />, berupa :
           </p>
 
-          <div className="pl-4 mb-4 space-y-1 text-justify">
-            <div className="flex gap-2">
-              <span>1.</span>
-              <p>Surat Pemberitahuan Pajak Terutang (SPPT) sebanyak <Editable value={data.detailPenyerahan.jumlahSPPT} path="detailPenyerahan.jumlahSPPT" placeholder="......" /> (<span className="italic">{formatTerbilang(data.detailPenyerahan.jumlahSPPT) || '......'}</span>) lembar.</p>
-            </div>
-            <div className="flex gap-2">
-              <span>2.</span>
-              <div>
-                <p>Daftar Himpunan Ketetapan dan Pembayaran (DHKP) PBB sebanyak <Editable value={data.detailPenyerahan.jumlahBukuDHKP} path="detailPenyerahan.jumlahBukuDHKP" placeholder="......" /> (<span className="italic">{formatTerbilang(data.detailPenyerahan.jumlahBukuDHKP) || '......'}</span>) buku, dengan jumlah ketetapan sebesar <span className="font-bold">Rp. <Editable value={data.detailPenyerahan.totalKetetapan} path="detailPenyerahan.totalKetetapan" placeholder="................" /></span> (<span className="font-bold italic">{formatTerbilang(data.detailPenyerahan.totalKetetapan) || '................'} Rupiah</span>) sebagaimana terlampir, dengan penjelasan sebagai berikut:</p>
+            <div className="pl-4 mb-4 space-y-1 text-justify">
+              <div className="flex gap-2">
+                <span>1.</span>
+                <p>Surat Pemberitahuan Pajak Terutang (SPPT) sebanyak <Editable value={data.detailPenyerahan.jumlahSPPT} path="detailPenyerahan.jumlahSPPT" placeholder="......" formatter={formatNumber} /> (<span className="italic">{formatTerbilang(data.detailPenyerahan.jumlahSPPT) || '......'}</span>) lembar.</p>
+              </div>
+              <div className="flex gap-2">
+                <span>2.</span>
+                <div>
+                  <p>Daftar Himpunan Ketetapan dan Pembayaran (DHKP) PBB sebanyak <Editable value={data.detailPenyerahan.jumlahBukuDHKP} path="detailPenyerahan.jumlahBukuDHKP" placeholder="......" formatter={formatNumber} /> (<span className="italic">{formatTerbilang(data.detailPenyerahan.jumlahBukuDHKP) || '......'}</span>) buku, dengan jumlah ketetapan sebesar <span className="font-bold">Rp. <Editable value={data.detailPenyerahan.totalKetetapan} path="detailPenyerahan.totalKetetapan" placeholder="................" formatter={formatNumber} /></span> (<span className="font-bold italic">{formatTerbilang(data.detailPenyerahan.totalKetetapan) || '................'} Rupiah</span>) sebagaimana terlampir, dengan penjelasan sebagai berikut:</p>
                 <div className="pl-4 mt-1 space-y-1">
                   <div className="flex gap-2"><span>a.</span><p>DHKP dan SPPT untuk diserahkan kepada kepala Desa/Lurah/Petugas Pemungut dengan menggunakan berita acara.</p></div>
                   <div className="flex gap-2"><span>b.</span><p>SPPT dapat disampaikan kepada Desa / Kelurahan selambat-lambatnya 5 (lima) hari kerja sejak ditandatanganinya berita acara penyerahan.</p></div>
@@ -234,7 +234,7 @@ const DocumentPreview = ({
           </div>
 
           <p className="mb-4 text-justify">
-            Pada hari ini <span className="font-bold"><Editable value={data.hari} path="hari" placeholder="............" /></span> tanggal <span className="font-bold"><Editable value={data.tanggal} path="tanggal" placeholder="............" /></span> bulan <span className="font-bold"><Editable value={data.bulan} path="bulan" placeholder="............" /></span> tahun <span className="font-bold"><Editable value={data.tahun} path="tahun" placeholder="............" /></span>, yang bertanda tangan di bawah ini:
+            Pada hari ini <span className="font-bold"><Editable value={data.hari} path="hari" placeholder="............" /></span> tanggal <span className="font-bold"><Editable value={data.tanggal} path="tanggal" placeholder="............" /></span> (<span className="italic">{formatTerbilang(data.tanggal) || '............'}</span>) bulan <span className="font-bold"><Editable value={data.bulan} path="bulan" placeholder="............" /></span> tahun <span className="font-bold"><Editable value={data.tahun} path="tahun" placeholder="............" /></span> (<span className="italic">{formatTerbilang(data.tahun) || '............'}</span>), yang bertanda tangan di bawah ini:
           </p>
 
           <div className="space-y-4 mb-6 pl-4">
@@ -282,15 +282,15 @@ const DocumentPreview = ({
             PIHAK PERTAMA menyerahkan kepada PIHAK KEDUA dan PIHAK KEDUA menerima dari PIHAK PERTAMA Surat Pemberitahuan Pajak Terhutang (SPPT) dan buku DHKP 1, 2 dan 3 Pajak Bumi dan Bangunan (PBB) Sektor Perdesaan dan Perkotaan untuk wilayah Desa <Editable value={data.detailPenyerahan.kelurahan} path="detailPenyerahan.kelurahan" placeholder="................" /> Kecamatan <Editable value={data.detailPenyerahan.kecamatan} path="detailPenyerahan.kecamatan" placeholder="................" /> Kabupaten Ogan Komering Ulu Selatan Tahun <Editable value={data.detailPenyerahan.tahunPajak} path="detailPenyerahan.tahunPajak" placeholder="............" />, berupa :
           </p>
 
-          <div className="pl-4 mb-6 space-y-1 text-justify">
-            <div className="flex gap-2">
-              <span>1.</span>
-              <p>Surat Pemberitahuan Pajak Terutang (SPPT) sebanyak <Editable value={data.detailPenyerahan.jumlahSPPT} path="detailPenyerahan.jumlahSPPT" placeholder="......" /> (<span className="italic">{formatTerbilang(data.detailPenyerahan.jumlahSPPT) || '......'}</span>) lembar.</p>
-            </div>
-            <div className="flex gap-2">
-              <span>2.</span>
-              <div>
-                <p>Daftar Himpunan Ketetapan dan Pembayaran (DHKP) PBB sebanyak <Editable value={data.detailPenyerahan.jumlahBukuDHKP} path="detailPenyerahan.jumlahBukuDHKP" placeholder="......" /> (<span className="italic">{formatTerbilang(data.detailPenyerahan.jumlahBukuDHKP) || '......'}</span>) buku, dengan jumlah ketetapan sebesar <span className="font-bold">Rp. <Editable value={data.detailPenyerahan.totalKetetapan} path="detailPenyerahan.totalKetetapan" placeholder="................" /></span> (<span className="font-bold italic">{formatTerbilang(data.detailPenyerahan.totalKetetapan) || '................'} Rupiah</span>) sebagaimana terlampir, dengan penjelasan sebagai berikut:</p>
+            <div className="pl-4 mb-6 space-y-1 text-justify">
+              <div className="flex gap-2">
+                <span>1.</span>
+                <p>Surat Pemberitahuan Pajak Terutang (SPPT) sebanyak <Editable value={data.detailPenyerahan.jumlahSPPT} path="detailPenyerahan.jumlahSPPT" placeholder="......" formatter={formatNumber} /> (<span className="italic">{formatTerbilang(data.detailPenyerahan.jumlahSPPT) || '......'}</span>) lembar.</p>
+              </div>
+              <div className="flex gap-2">
+                <span>2.</span>
+                <div>
+                  <p>Daftar Himpunan Ketetapan dan Pembayaran (DHKP) PBB sebanyak <Editable value={data.detailPenyerahan.jumlahBukuDHKP} path="detailPenyerahan.jumlahBukuDHKP" placeholder="......" formatter={formatNumber} /> (<span className="italic">{formatTerbilang(data.detailPenyerahan.jumlahBukuDHKP) || '......'}</span>) buku, dengan jumlah ketetapan sebesar <span className="font-bold">Rp. <Editable value={data.detailPenyerahan.totalKetetapan} path="detailPenyerahan.totalKetetapan" placeholder="................" formatter={formatNumber} /></span> (<span className="font-bold italic">{formatTerbilang(data.detailPenyerahan.totalKetetapan) || '................'} Rupiah</span>) sebagaimana terlampir, dengan penjelasan sebagai berikut:</p>
                 <div className="pl-4 mt-1 space-y-1">
                   <div className="flex gap-2"><span>a.</span><p>SPPT dapat disampaikan kepada Wajib Pajak selambat-lambatnya 25 (dua puluh lima) hari kerja sejak ditandatanganinya berita acara penyerahan.</p></div>
                   <div className="flex gap-2"><span>b.</span><p>Pajak terhutang agar dibayar lunas pada tempat pembayaran yang telah dicantumkan pada SPPT.</p></div>
@@ -593,18 +593,41 @@ export default function App() {
 
   const updateField = (path: string, value: any) => {
     const keys = path.split('.');
+    
+    // Clean numeric values
+    let processedValue = value;
+    const numericPaths = [
+      'detailPenyerahan.jumlahSPPT',
+      'detailPenyerahan.jumlahBukuDHKP',
+      'detailPenyerahan.totalKetetapan'
+    ];
+    if (numericPaths.includes(path) && typeof value === 'string') {
+      processedValue = value.replace(/[^0-9]/g, '');
+    }
+
     setData(prev => {
       const newData = { ...prev };
       let current: any = newData;
       for (let i = 0; i < keys.length - 1; i++) {
         current = current[keys[i]] = { ...current[keys[i]] };
       }
-      current[keys[keys.length - 1]] = value;
+      current[keys[keys.length - 1]] = processedValue;
       return newData;
     });
   };
 
   const updateBatchField = (index: number, path: string, value: string) => {
+    // Clean numeric values
+    let processedValue = value;
+    const numericPaths = [
+      'detailPenyerahan.jumlahSPPT',
+      'detailPenyerahan.jumlahBukuDHKP',
+      'detailPenyerahan.totalKetetapan'
+    ];
+    if (numericPaths.includes(path)) {
+      processedValue = value.replace(/[^0-9]/g, '');
+    }
+
     setBatchPreviewData(prev => {
       const newData = [...prev];
       const item = { ...newData[index] };
@@ -613,7 +636,7 @@ export default function App() {
       for (let i = 0; i < keys.length - 1; i++) {
         current = current[keys[i]] = { ...current[keys[i]] };
       }
-      current[keys[keys.length - 1]] = value;
+      current[keys[keys.length - 1]] = processedValue;
       newData[index] = item;
       return newData;
     });
@@ -664,7 +687,7 @@ export default function App() {
         </div>
         
         <p style="text-align: justify; margin-bottom: 15px;">
-          Pada hari ini <b>${currentData.hari || '............'}</b> tanggal <b>${formatTerbilang(currentData.tanggal) || currentData.tanggal || '............'}</b> bulan <b>${formatTerbilang(currentData.bulan) || currentData.bulan || '............'}</b> tahun <b>${formatTerbilang(currentData.tahun) || '............'}</b>, yang bertanda tangan di bawah ini:
+          Pada hari ini <b>${currentData.hari || '............'}</b> tanggal <b>${currentData.tanggal || '............'} (${formatTerbilang(currentData.tanggal) || '............'})</b> bulan <b>${currentData.bulan || '............'}</b> tahun <b>${currentData.tahun || '............'} (${formatTerbilang(currentData.tahun) || '............'})</b>, yang bertanda tangan di bawah ini:
         </p>
         
         <table width="100%" style="margin-bottom: 15px;">
@@ -698,13 +721,13 @@ export default function App() {
           <tr>
             <td width="5%" valign="top">1.</td>
             <td width="95%" style="text-align: justify;">
-              Surat Pemberitahuan Pajak Terutang (SPPT) sebanyak ${currentData.detailPenyerahan.jumlahSPPT || '......'} (<i>${formatTerbilang(currentData.detailPenyerahan.jumlahSPPT) || '......'}</i>) lembar.
+              Surat Pemberitahuan Pajak Terutang (SPPT) sebanyak ${formatNumber(currentData.detailPenyerahan.jumlahSPPT) || '......'} (<i>${formatTerbilang(currentData.detailPenyerahan.jumlahSPPT) || '......'}</i>) lembar.
             </td>
           </tr>
           <tr>
             <td width="5%" valign="top">2.</td>
             <td width="95%" style="text-align: justify;">
-              Daftar Himpunan Ketetapan dan Pembayaran (DHKP) PBB sebanyak ${currentData.detailPenyerahan.jumlahBukuDHKP || '......'} (<i>${formatTerbilang(currentData.detailPenyerahan.jumlahBukuDHKP) || '......'}</i>) buku, dengan jumlah ketetapan sebesar <b>Rp. ${currentData.detailPenyerahan.totalKetetapan || '................'}</b> (<b><i>${formatTerbilang(currentData.detailPenyerahan.totalKetetapan) || '................'} Rupiah</i></b>) sebagaimana terlampir, dengan penjelasan sebagai berikut:
+              Daftar Himpunan Ketetapan dan Pembayaran (DHKP) PBB sebanyak ${formatNumber(currentData.detailPenyerahan.jumlahBukuDHKP) || '......'} (<i>${formatTerbilang(currentData.detailPenyerahan.jumlahBukuDHKP) || '......'}</i>) buku, dengan jumlah ketetapan sebesar <b>Rp. ${formatNumber(currentData.detailPenyerahan.totalKetetapan) || '................'}</b> (<b><i>${formatTerbilang(currentData.detailPenyerahan.totalKetetapan) || '................'} Rupiah</i></b>) sebagaimana terlampir, dengan penjelasan sebagai berikut:
               <table width="100%" style="margin-top: 5px;">
                 <tr><td width="5%" valign="top">a.</td><td style="text-align: justify;">DHKP dan SPPT untuk diserahkan kepada kepala Desa/Lurah/Petugas Pemungut dengan menggunakan berita acara.</td></tr>
                 <tr><td width="5%" valign="top">b.</td><td style="text-align: justify;">SPPT dapat disampaikan kepada Desa / Kelurahan selambat-lambatnya 5 (lima) hari kerja sejak ditandatanganinya berita acara penyerahan.</td></tr>
@@ -754,7 +777,7 @@ export default function App() {
         </div>
         
         <p style="text-align: justify; margin-bottom: 15px;">
-          Pada hari ini <b>${currentData.hari || '............'}</b> tanggal <b>${formatTerbilang(currentData.tanggal) || currentData.tanggal || '............'}</b> bulan <b>${formatTerbilang(currentData.bulan) || currentData.bulan || '............'}</b> tahun <b>${formatTerbilang(currentData.tahun) || '............'}</b>, yang bertanda tangan di bawah ini:
+          Pada hari ini <b>${currentData.hari || '............'}</b> tanggal <b>${currentData.tanggal || '............'} (${formatTerbilang(currentData.tanggal) || '............'})</b> bulan <b>${currentData.bulan || '............'}</b> tahun <b>${currentData.tahun || '............'} (${formatTerbilang(currentData.tahun) || '............'})</b>, yang bertanda tangan di bawah ini:
         </p>
         
         <table width="100%" style="margin-bottom: 15px;">
@@ -788,13 +811,13 @@ export default function App() {
           <tr>
             <td width="5%" valign="top">1.</td>
             <td width="95%" style="text-align: justify;">
-              Surat Pemberitahuan Pajak Terutang (SPPT) sebanyak ${currentData.detailPenyerahan.jumlahSPPT || '......'} (<i>${formatTerbilang(currentData.detailPenyerahan.jumlahSPPT) || '......'}</i>) lembar.
+              Surat Pemberitahuan Pajak Terutang (SPPT) sebanyak ${formatNumber(currentData.detailPenyerahan.jumlahSPPT) || '......'} (<i>${formatTerbilang(currentData.detailPenyerahan.jumlahSPPT) || '......'}</i>) lembar.
             </td>
           </tr>
           <tr>
             <td width="5%" valign="top">2.</td>
             <td width="95%" style="text-align: justify;">
-              Daftar Himpunan Ketetapan dan Pembayaran (DHKP) PBB sebanyak ${currentData.detailPenyerahan.jumlahBukuDHKP || '......'} (<i>${formatTerbilang(currentData.detailPenyerahan.jumlahBukuDHKP) || '......'}</i>) buku, dengan jumlah ketetapan sebesar <b>Rp. ${currentData.detailPenyerahan.totalKetetapan || '................'}</b> (<b><i>${formatTerbilang(currentData.detailPenyerahan.totalKetetapan) || '................'} Rupiah</i></b>) sebagaimana terlampir, dengan penjelasan sebagai berikut:
+              Daftar Himpunan Ketetapan dan Pembayaran (DHKP) PBB sebanyak ${formatNumber(currentData.detailPenyerahan.jumlahBukuDHKP) || '......'} (<i>${formatTerbilang(currentData.detailPenyerahan.jumlahBukuDHKP) || '......'}</i>) buku, dengan jumlah ketetapan sebesar <b>Rp. ${formatNumber(currentData.detailPenyerahan.totalKetetapan) || '................'}</b> (<b><i>${formatTerbilang(currentData.detailPenyerahan.totalKetetapan) || '................'} Rupiah</i></b>) sebagaimana terlampir, dengan penjelasan sebagai berikut:
               <table width="100%" style="margin-top: 5px;">
                 <tr><td width="5%" valign="top">a.</td><td style="text-align: justify;">SPPT dapat disampaikan kepada Wajib Pajak selambat-lambatnya 25 (dua puluh lima) hari kerja sejak ditandatanganinya berita acara penyerahan.</td></tr>
                 <tr><td width="5%" valign="top">b.</td><td style="text-align: justify;">Pajak terhutang agar dibayar lunas pada tempat pembayaran yang telah dicantumkan pada SPPT.</td></tr>
@@ -956,9 +979,9 @@ export default function App() {
         },
         detailPenyerahan: {
           tahunPajak: row.detailPenyerahan_tahunPajak || '',
-          jumlahSPPT: row.detailPenyerahan_jumlahSPPT || '',
-          jumlahBukuDHKP: row.detailPenyerahan_jumlahBukuDHKP || '',
-          totalKetetapan: row.detailPenyerahan_totalKetetapan || '',
+          jumlahSPPT: String(row.detailPenyerahan_jumlahSPPT || '').replace(/[^0-9]/g, ''),
+          jumlahBukuDHKP: String(row.detailPenyerahan_jumlahBukuDHKP || '').replace(/[^0-9]/g, ''),
+          totalKetetapan: String(row.detailPenyerahan_totalKetetapan || '').replace(/[^0-9]/g, ''),
           kecamatan: row.detailPenyerahan_kecamatan || '',
           kelurahan: row.detailPenyerahan_kelurahan || ''
         }
@@ -1598,7 +1621,7 @@ export default function App() {
                       <label className="text-[10px] font-semibold text-slate-500 uppercase">Jumlah SPPT</label>
                       {isAnalyzing ? <SkeletonInput /> : (
                         <input 
-                          value={data.detailPenyerahan.jumlahSPPT}
+                          value={formatNumber(data.detailPenyerahan.jumlahSPPT)}
                           onChange={(e) => updateField('detailPenyerahan.jumlahSPPT', e.target.value)}
                           className={INPUT_CLASSES}
                         />
@@ -1608,7 +1631,7 @@ export default function App() {
                       <label className="text-[10px] font-semibold text-slate-500 uppercase">Jumlah Buku DHKP</label>
                       {isAnalyzing ? <SkeletonInput /> : (
                         <input 
-                          value={data.detailPenyerahan.jumlahBukuDHKP}
+                          value={formatNumber(data.detailPenyerahan.jumlahBukuDHKP)}
                           onChange={(e) => updateField('detailPenyerahan.jumlahBukuDHKP', e.target.value)}
                           className={INPUT_CLASSES}
                           placeholder="Contoh: 16"
@@ -1619,7 +1642,7 @@ export default function App() {
                       <label className="text-[10px] font-semibold text-slate-500 uppercase">Total Ketetapan (Rp)</label>
                       {isAnalyzing ? <SkeletonInput /> : (
                         <input 
-                          value={data.detailPenyerahan.totalKetetapan}
+                          value={formatNumber(data.detailPenyerahan.totalKetetapan)}
                           onChange={(e) => updateField('detailPenyerahan.totalKetetapan', e.target.value)}
                           className={INPUT_CLASSES}
                         />
