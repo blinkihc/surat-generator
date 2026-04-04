@@ -62,7 +62,7 @@
   .print-area {
     display: block !important;
     margin: 0 auto !important;
-    padding: 20mm !important;
+    padding: 15mm 20mm !important;
     width: 215mm !important;
     min-height: 330mm !important;
     box-shadow: none !important;

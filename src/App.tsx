@@ -90,7 +90,7 @@ const SkeletonInput = () => (
   return (
     <div 
       ref={documentRef}
-      className="w-[215mm] bg-white p-[20mm] text-slate-900 font-['Arial',sans-serif] leading-relaxed text-[11pt] shrink-0 shadow-xl print-area"
+      className="w-[215mm] bg-white px-[20mm] py-[15mm] text-slate-900 font-['Arial',sans-serif] leading-relaxed text-[11pt] shrink-0 shadow-xl print-area"
       style={{ minHeight: '330mm' }}
     >
       {/* Kop Surat */}
@@ -192,12 +192,12 @@ const SkeletonInput = () => (
             </div>
           </div>
 
-          <p className="mb-12 text-justify">
+          <p className="mb-8 text-justify">
             Demikian berita acara ini dibuat dalam rangkap 2 (dua) untuk dipergunakan sebagaimana mestinya.
           </p>
 
           <div className="grid grid-cols-2 gap-8 text-center">
-            <div className="space-y-20">
+            <div className="space-y-12">
               <div>
                 <p>PIHAK KEDUA</p>
                 <p>Camat <Editable value={data.detailPenyerahan.kecamatan} path="detailPenyerahan.kecamatan" placeholder="................" /></p>
@@ -208,7 +208,7 @@ const SkeletonInput = () => (
                 <p>NIP. <Editable value={data.pihakKedua.nip} path="pihakKedua.nip" /></p>
               </div>
             </div>
-            <div className="space-y-20">
+            <div className="space-y-12">
               <div>
                 <p>PIHAK PERTAMA</p>
                 <p>Kepala Badan Pendapatan Daerah</p>
@@ -300,12 +300,12 @@ const SkeletonInput = () => (
             </div>
           </div>
 
-          <p className="mb-12 text-justify">
+          <p className="mb-8 text-justify">
             Demikian berita acara ini dibuat dalam rangkap 2 (dua) untuk dipergunakan sebagaimana mestinya.
           </p>
 
-          <div className="grid grid-cols-2 gap-8 text-center mb-12">
-            <div className="space-y-20">
+          <div className="grid grid-cols-2 gap-8 text-center mb-8">
+            <div className="space-y-12">
               <div>
                 <p>PIHAK KEDUA</p>
                 <p>&nbsp;</p>
@@ -320,7 +320,7 @@ const SkeletonInput = () => (
                 </p>
               </div>
             </div>
-            <div className="space-y-20">
+            <div className="space-y-12">
               <div>
                 <p>PIHAK PERTAMA</p>
                 <p>Camat <Editable value={data.detailPenyerahan.kecamatan} path="detailPenyerahan.kecamatan" placeholder="................" /></p>
@@ -333,11 +333,11 @@ const SkeletonInput = () => (
             </div>
           </div>
 
-          <div className="text-center mt-8">
+          <div className="text-center mt-4">
             <p className="font-bold uppercase leading-none">MENGETAHUI</p>
             <p className="font-bold leading-none">Kepala Badan Pendapatan Daerah</p>
             <p className="font-bold leading-none">Kabupaten Ogan Komering Ulu Selatan</p>
-            <div className="mt-16">
+            <div className="mt-10">
               <p className="font-bold underline uppercase">
                 <Editable value={settings.mengetahuiNama} path="mengetahuiNama" isSettings />
               </p>
