@@ -71,7 +71,6 @@
   .print-area {
     display: block !important;
     margin: 0 auto !important;
-    padding: 10mm 15mm 10mm 15mm !important;
     width: 215mm !important;
     box-shadow: none !important;
     transform: none !important;

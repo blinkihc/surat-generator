@@ -598,10 +598,18 @@ export default function App() {
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', [215, 330]);
       const imgProps = pdf.getImageProperties(imgData);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      let pdfWidth = pdf.internal.pageSize.getWidth();
+      let pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      let xOffset = 0;
+      if (pdfHeight > 330) {
+        const scaleFactor = 330 / pdfHeight;
+        pdfWidth = pdfWidth * scaleFactor;
+        pdfHeight = 330;
+        xOffset = (215 - pdfWidth) / 2;
+      }
+      
+      pdf.addImage(imgData, 'PNG', xOffset, 0, pdfWidth, pdfHeight);
       pdf.save(`Berita_Acara_PBB_${data.detailPenyerahan.kelurahan || 'Dokumen'}.pdf`);
     } catch (err) {
       console.error("Failed to generate PDF", err);
@@ -677,24 +685,25 @@ export default function App() {
     
     // Kop Surat
     content += `
-      <table width="100%" style="border-bottom: 3px solid black; margin-bottom: 10px;">
+      <table width="100%" style="border-bottom: 3px solid black; margin-bottom: 5px;">
         <tr>
           <td width="15%" align="center" valign="middle">
             ${currentSettings.kopLogoBase64 ? `<img src="${currentSettings.kopLogoBase64}" width="80" height="90" />` : ''}
           </td>
           <td width="85%" align="center" valign="middle">
-            <div style="font-size: 14pt; font-weight: bold;">${currentSettings.kopLine1}</div>
-            <div style="font-size: 20pt; font-weight: bold;">${currentSettings.kopLine2}</div>
+            <div style="font-size: 12pt; font-weight: bold;">${currentSettings.kopLine1}</div>
+            <div style="font-size: 20pt; font-weight: bold; margin-top: 2px; margin-bottom: 2px;">${currentSettings.kopLine2}</div>
             <div style="font-size: 9pt;">${currentSettings.kopLine3}</div>
             <div style="font-size: 9pt; font-style: italic;">${currentSettings.kopAddress}</div>
           </td>
         </tr>
       </table>
+      <div style="border-bottom: 1px solid black; margin-bottom: 15px;"></div>
     `;
 
     if (currentData.templateType === 'BA_CAMAT') {
       content += `
-        <div style="text-align: center; margin-bottom: 20px;">
+        <div style="text-align: center; margin-bottom: 15px;">
           <div style="font-size: 11pt; font-weight: bold;">
             BERITA ACARA PENYERAHAN SURAT PEMBERITAHUAN PAJAK TERUTANG (SPPT)<br/>
             DAN DAFTAR HIMPUNAN KETETAPAN DAN PEMBAYARAN (DHKP) PBB<br/>
@@ -705,17 +714,17 @@ export default function App() {
           </div>
         </div>
         
-        <p style="text-align: justify; margin-bottom: 15px;">
+        <p style="text-align: justify; margin-bottom: 10px;">
           Pada hari ini <b>${currentData.hari || '............'}</b> tanggal <b>${currentData.tanggal || '............'} (${formatTerbilang(currentData.tanggal) || '............'})</b> bulan <b>${currentData.bulan || '............'}</b> tahun <b>${currentData.tahun || '............'} (${formatTerbilang(currentData.tahun) || '............'})</b>, yang bertanda tangan di bawah ini:
         </p>
         
-        <table width="100%" style="margin-bottom: 15px;">
+        <table width="100%" style="margin-bottom: 10px;">
           <tr>
             <td width="5%" valign="top">I.</td>
             <td width="95%">
               <table width="100%">
-                <tr><td width="20%">Nama/NIP</td><td width="5%">:</td><td><b>${currentSettings.mengetahuiNama || '................................'} / NIP. ${currentSettings.mengetahuiNip || '................................'}</b></td></tr>
-                <tr><td>Jabatan</td><td>:</td><td>Kepala Badan Pendapatan Daerah Kabupaten Ogan Komering Ulu Selatan</td></tr>
+                <tr><td width="20%">Nama/NIP</td><td width="5%">:</td><td><b>${currentData.pihakPertama.nama || '................................'} / NIP. ${currentData.pihakPertama.nip || '................................'}</b></td></tr>
+                <tr><td>Jabatan</td><td>:</td><td>${currentData.pihakPertama.jabatan || '................................'}</td></tr>
               </table>
               <p>Selanjutnya disebut sebagai PIHAK PERTAMA</p>
             </td>
@@ -732,11 +741,11 @@ export default function App() {
           </tr>
         </table>
         
-        <p style="text-align: justify; margin-bottom: 15px;">
+        <p style="text-align: justify; margin-bottom: 10px;">
           PIHAK PERTAMA menyerahkan kepada PIHAK KEDUA dan PIHAK KEDUA menerima dari PIHAK PERTAMA Surat Pemberitahuan Pajak Terhutang (SPPT) dan buku DHKP 1, 2 dan 3 Pajak Bumi dan Bangunan (PBB) Sektor Perdesaan dan Perkotaan untuk wilayah Kecamatan ${currentData.detailPenyerahan.kecamatan || '................'} Kabupaten Ogan Komering Ulu Selatan Tahun ${currentData.detailPenyerahan.tahunPajak || '............'}, berupa :
         </p>
         
-        <table width="100%" style="margin-bottom: 15px;">
+        <table width="100%" style="margin-bottom: 10px;">
           <tr>
             <td width="5%" valign="top">1.</td>
             <td width="95%" style="text-align: justify;">
@@ -756,7 +765,7 @@ export default function App() {
           </tr>
         </table>
         
-        <p style="text-align: justify; margin-bottom: 40px;">
+        <p style="text-align: justify; margin-bottom: 20px;">
           Demikian berita acara ini dibuat dalam rangkap 2 (dua) untuk dipergunakan sebagaimana mestinya.
         </p>
         
@@ -766,7 +775,7 @@ export default function App() {
               <p>PIHAK KEDUA</p>
               <p>Camat ${currentData.detailPenyerahan.kecamatan || '................'}</p>
               <p>Kabupaten Ogan Komering Ulu Selatan</p>
-              <br/><br/><br/><br/>
+              <br/><br/><br/>
               <p><b><u>${currentData.pihakKedua.nama || '................................'}</u></b></p>
               <p>NIP. ${currentData.pihakKedua.nip || '................................'}</p>
             </td>
@@ -774,7 +783,7 @@ export default function App() {
               <p>PIHAK PERTAMA</p>
               <p>Kepala Badan Pendapatan Daerah</p>
               <p>Kabupaten Ogan Komering Ulu Selatan</p>
-              <br/><br/><br/><br/>
+              <br/><br/><br/>
               <p><b><u>${currentSettings.mengetahuiNama || '................................'}</u></b></p>
               <p>NIP. ${currentSettings.mengetahuiNip || '................................'}</p>
             </td>
@@ -784,7 +793,7 @@ export default function App() {
     } else {
       // BA_DESA
       content += `
-        <div style="text-align: center; margin-bottom: 20px;">
+        <div style="text-align: center; margin-bottom: 15px;">
           <div style="font-size: 11pt; font-weight: bold;">
             BERITA ACARA PENYERAHAN SURAT PEMBERITAHUAN PAJAK TERUTANG (SPPT)<br/>
             DAN DAFTAR HIMPUNAN KETETAPAN DAN PEMBAYARAN (DHKP) PBB<br/>
@@ -795,11 +804,11 @@ export default function App() {
           </div>
         </div>
         
-        <p style="text-align: justify; margin-bottom: 15px;">
+        <p style="text-align: justify; margin-bottom: 10px;">
           Pada hari ini <b>${currentData.hari || '............'}</b> tanggal <b>${currentData.tanggal || '............'} (${formatTerbilang(currentData.tanggal) || '............'})</b> bulan <b>${currentData.bulan || '............'}</b> tahun <b>${currentData.tahun || '............'} (${formatTerbilang(currentData.tahun) || '............'})</b>, yang bertanda tangan di bawah ini:
         </p>
         
-        <table width="100%" style="margin-bottom: 15px;">
+        <table width="100%" style="margin-bottom: 10px;">
           <tr>
             <td width="5%" valign="top">I.</td>
             <td width="95%">
@@ -822,11 +831,11 @@ export default function App() {
           </tr>
         </table>
         
-        <p style="text-align: justify; margin-bottom: 15px;">
+        <p style="text-align: justify; margin-bottom: 10px;">
           PIHAK PERTAMA menyerahkan kepada PIHAK KEDUA dan PIHAK KEDUA menerima dari PIHAK PERTAMA Surat Pemberitahuan Pajak Terhutang (SPPT) dan buku DHKP 1, 2 dan 3 Pajak Bumi dan Bangunan (PBB) Sektor Perdesaan dan Perkotaan untuk wilayah Desa ${currentData.detailPenyerahan.kelurahan || '................'} Kecamatan ${currentData.detailPenyerahan.kecamatan || '................'} Kabupaten Ogan Komering Ulu Selatan Tahun ${currentData.detailPenyerahan.tahunPajak || '............'}, berupa :
         </p>
         
-        <table width="100%" style="margin-bottom: 15px;">
+        <table width="100%" style="margin-bottom: 10px;">
           <tr>
             <td width="5%" valign="top">1.</td>
             <td width="95%" style="text-align: justify;">
@@ -845,15 +854,15 @@ export default function App() {
           </tr>
         </table>
         
-        <p style="text-align: justify; margin-bottom: 40px;">
+        <p style="text-align: justify; margin-bottom: 20px;">
           Demikian berita acara ini dibuat dalam rangkap 2 (dua) untuk dipergunakan sebagaimana mestinya.
         </p>
         
-        <table width="100%" style="text-align: center; margin-bottom: 40px;">
+        <table width="100%" style="text-align: center; margin-bottom: 20px;">
           <tr>
             <td width="50%" valign="top">
               <p>PIHAK KEDUA</p>
-              <br/><br/><br/><br/>
+              <br/><br/><br/>
               <p><b><u>${currentData.pihakKedua.kosongkanData ? '................................' : (currentData.pihakKedua.nama || '................................')}</u></b></p>
               <p>NIP. ${currentData.pihakKedua.kosongkanData ? '................................' : (currentData.pihakKedua.nip || '................................')}</p>
             </td>
@@ -861,7 +870,7 @@ export default function App() {
               <p>PIHAK PERTAMA</p>
               <p>Camat ${currentData.detailPenyerahan.kecamatan || '................'}</p>
               <p>Kabupaten Ogan Komering Ulu Selatan</p>
-              <br/><br/><br/><br/>
+              <br/><br/><br/>
               <p><b><u>${currentData.pihakPertama.nama || '................................'}</u></b></p>
               <p>NIP. ${currentData.pihakPertama.nip || '................................'}</p>
             </td>
@@ -874,7 +883,7 @@ export default function App() {
               <p><b>MENGETAHUI</b></p>
               <p>Kepala Badan Pendapatan Daerah</p>
               <p>Kabupaten Ogan Komering Ulu Selatan</p>
-              <br/><br/><br/><br/>
+              <br/><br/><br/>
               <p><b><u>${currentSettings.mengetahuiNama || '................................'}</u></b></p>
               <p>NIP. ${currentSettings.mengetahuiNip || '................................'}</p>
             </td>
@@ -889,12 +898,22 @@ export default function App() {
         <meta charset='utf-8'>
         <title>Berita Acara</title>
         <style>
+          @page WordSection1 {
+            size: 21.5cm 33.0cm;
+            margin: 1.0cm 2.0cm 1.5cm 2.0cm;
+            mso-header-margin: 35.4pt;
+            mso-footer-margin: 35.4pt;
+            mso-paper-source: 0;
+          }
+          div.WordSection1 { page: WordSection1; }
           body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.5; }
           p { margin: 0; padding: 0; }
         </style>
       </head>
       <body>
-        ${content}
+        <div class="WordSection1">
+          ${content}
+        </div>
       </body>
       </html>
     `;
