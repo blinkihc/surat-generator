@@ -1,0 +1,5 @@
+{
+  "name": "PBB Handover Generator",
+  "description": "Generate Berita Acara Penyerahan PBB documents by extracting data from images or manual input.",
+  "requestFramePermissions": []
+}
