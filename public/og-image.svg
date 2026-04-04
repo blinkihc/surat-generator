@@ -1,0 +1,42 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5" />
+      <stop offset="100%" stop-color="#312e81" />
+    </linearGradient>
+    <linearGradient id="card" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.05" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="1200" height="630" fill="url(#bg)" />
+  
+  <!-- Abstract Shapes -->
+  <circle cx="1000" cy="100" r="300" fill="#ffffff" opacity="0.05" />
+  <circle cx="200" cy="500" r="200" fill="#ffffff" opacity="0.05" />
+  
+  <!-- Glassmorphism Card -->
+  <rect x="150" y="150" width="900" height="330" rx="24" fill="url(#card)" stroke="#ffffff" stroke-width="2" stroke-opacity="0.2" />
+  
+  <!-- Red and White Accent (Indonesian Flag colors) -->
+  <path d="M 150 174 A 24 24 0 0 1 174 150 L 1026 150 A 24 24 0 0 1 1050 174 L 1050 158 L 150 158 Z" fill="#ef4444" opacity="0.9" />
+  <rect x="150" y="158" width="900" height="8" fill="#ffffff" opacity="0.9" />
+  
+  <!-- Content -->
+  <g transform="translate(220, 260)">
+    <!-- Document Icon -->
+    <svg x="0" y="-20" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+      <polyline points="14 2 14 8 20 8"></polyline>
+      <line x1="16" y1="13" x2="8" y2="13"></line>
+      <line x1="16" y1="17" x2="8" y2="17"></line>
+      <polyline points="10 9 9 9 8 9"></polyline>
+    </svg>
+    
+    <!-- Text -->
+    <text x="110" y="25" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="800" fill="#ffffff" letter-spacing="-1">PBB Handover</text>
+    <text x="110" y="75" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="400" fill="#cbd5e1">Generator Berita Acara Serah Terima</text>
+    <text x="110" y="110" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="400" fill="#cbd5e1">Dokumen Pajak Bumi dan Bangunan</text>
+  </g>
+</svg>

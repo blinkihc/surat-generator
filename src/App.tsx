@@ -31,12 +31,13 @@ import {
   Home,
   HelpCircle,
   Zap,
-  Settings
+  Settings,
+  History
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, formatNumber } from './lib/utils';
 import { formatTerbilang } from './lib/terbilang';
-import { PBBHandoverData, initialData, SavedTemplate, TemplateType, AppSettings, initialSettings } from './types';
+import { PBBHandoverData, initialData, SavedTemplate, TemplateType, AppSettings, initialSettings, PrintHistoryEntry } from './types';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
@@ -371,6 +372,8 @@ export default function App() {
   const [isGeneratingBatch, setIsGeneratingBatch] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
   const [printData, setPrintData] = useState<PBBHandoverData[] | null>(null);
+  const [printHistory, setPrintHistory] = useState<PrintHistoryEntry[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
   const documentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -415,7 +418,22 @@ export default function App() {
         console.error("Failed to parse settings", e);
       }
     }
+
+    const savedHistory = localStorage.getItem('pbb_print_history');
+    if (savedHistory) {
+      try {
+        setPrintHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error("Failed to parse print history", e);
+      }
+    }
   }, []);
+
+  useEffect(() => {
+    if (printHistory.length > 0) {
+      localStorage.setItem('pbb_print_history', JSON.stringify(printHistory));
+    }
+  }, [printHistory]);
 
   const saveSettings = (newSettings: AppSettings) => {
     setSettings(newSettings);
@@ -1063,18 +1081,39 @@ export default function App() {
     }
   };
 
+  const recordPrintHistory = (printItems: PBBHandoverData[], type: 'INDIVIDUAL' | 'BATCH') => {
+    const allSameTemplate = printItems.every(item => item.templateType === printItems[0].templateType);
+    const allSameKecamatan = printItems.every(item => item.detailPenyerahan.kecamatan === printItems[0].detailPenyerahan.kecamatan);
+    
+    const newEntry: PrintHistoryEntry = {
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      type,
+      templateType: allSameTemplate ? printItems[0].templateType : 'MIXED',
+      kecamatan: allSameKecamatan ? printItems[0].detailPenyerahan.kecamatan : 'Multiple',
+      kelurahan: printItems.length === 1 ? printItems[0].detailPenyerahan.kelurahan : undefined,
+      nomorBeritaAcara: printItems.length === 1 ? printItems[0].nomorBeritaAcara : 'Multiple',
+      jumlahDokumen: printItems.length,
+    };
+    setPrintHistory(prev => [newEntry, ...prev]);
+  };
+
   const handlePrintBatchCurrent = () => {
     setPrintData([data]);
+    recordPrintHistory([data], 'INDIVIDUAL');
   };
 
   const handlePrintBatchAll = () => {
     if (!batchPreviewData || batchPreviewData.length === 0) return;
     setPrintData(batchPreviewData);
+    recordPrintHistory(batchPreviewData, 'BATCH');
   };
 
   const handlePrintBatchSingle = () => {
     if (!batchPreviewData) return;
-    setPrintData([batchPreviewData[currentBatchPreviewIndex]]);
+    const item = batchPreviewData[currentBatchPreviewIndex];
+    setPrintData([item]);
+    recordPrintHistory([item], 'INDIVIDUAL');
   };
 
   return (
@@ -1121,6 +1160,15 @@ export default function App() {
             >
               <Layout size={18} />
               <span className="hidden md:inline">Pengaturan</span>
+            </motion.button>
+            <motion.button 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowHistory(true)}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <History size={18} />
+              <span className="hidden md:inline">Riwayat</span>
             </motion.button>
             <motion.button 
               whileHover={{ scale: 1.02 }}
@@ -2280,6 +2328,112 @@ export default function App() {
                   Simpan
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+        {showHistory && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-container no-print">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowHistory(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            >
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                    <History size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900">Riwayat Cetak</h3>
+                    <p className="text-xs text-slate-500">Histori dokumen yang pernah dicetak</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowHistory(false)} className="p-2 hover:bg-slate-100 text-slate-500 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto flex-1">
+                {printHistory.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <History size={24} className="text-slate-400" />
+                    </div>
+                    <h4 className="font-medium text-slate-900 mb-1">Belum ada riwayat</h4>
+                    <p className="text-sm text-slate-500">Dokumen yang Anda cetak akan muncul di sini.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {printHistory.map((entry) => (
+                      <div key={entry.id} className="p-4 rounded-xl border border-slate-100 hover:border-indigo-100 hover:shadow-md transition-all bg-slate-50/50">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className={cn(
+                              "px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase",
+                              entry.type === 'BATCH' ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                            )}>
+                              {entry.type}
+                            </span>
+                            <span className="text-xs font-medium text-slate-500">
+                              {new Date(entry.timestamp).toLocaleString('id-ID', {
+                                day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                          <span className="text-xs font-bold text-slate-700 bg-white px-2 py-1 rounded-md border border-slate-200 shadow-sm">
+                            {entry.jumlahDokumen} Dokumen
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-1">Template</p>
+                            <p className="text-sm font-medium text-slate-900">
+                              {entry.templateType === 'BA_CAMAT' ? 'BA Camat' : entry.templateType === 'BA_DESA' ? 'BA Desa' : 'Campuran'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-1">Nomor BA</p>
+                            <p className="text-sm font-medium text-slate-900">{entry.nomorBeritaAcara}</p>
+                          </div>
+                          <div className="col-span-2">
+                            <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-1">Lokasi</p>
+                            <p className="text-sm font-medium text-slate-900">
+                              Kec. {entry.kecamatan}
+                              {entry.kelurahan && ` - Desa/Kel. ${entry.kelurahan}`}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {printHistory.length > 0 && (
+                <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end shrink-0">
+                  <button 
+                    onClick={() => {
+                      if (window.confirm('Apakah Anda yakin ingin menghapus semua riwayat cetak?')) {
+                        setPrintHistory([]);
+                        localStorage.removeItem('pbb_print_history');
+                      }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <Trash2 size={16} />
+                    Hapus Semua Riwayat
+                  </button>
+                </div>
+              )}
             </motion.div>
           </div>
         )}
