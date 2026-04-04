@@ -191,12 +191,12 @@ const SkeletonInput = () => (
             </div>
           </div>
 
-          <p className="mb-8 text-justify">
+          <p className="mb-6 text-justify">
             Demikian berita acara ini dibuat dalam rangkap 2 (dua) untuk dipergunakan sebagaimana mestinya.
           </p>
 
           <div className="grid grid-cols-2 gap-8 text-center">
-            <div className="space-y-12">
+            <div className="space-y-8">
               <div>
                 <p>PIHAK KEDUA</p>
                 <p>Camat <Editable value={data.detailPenyerahan.kecamatan} path="detailPenyerahan.kecamatan" placeholder="................" /></p>
@@ -207,7 +207,7 @@ const SkeletonInput = () => (
                 <p>NIP. <Editable value={data.pihakKedua.nip} path="pihakKedua.nip" /></p>
               </div>
             </div>
-            <div className="space-y-12">
+            <div className="space-y-8">
               <div>
                 <p>PIHAK PERTAMA</p>
                 <p>Kepala Badan Pendapatan Daerah</p>
@@ -237,7 +237,7 @@ const SkeletonInput = () => (
             Pada hari ini <span className="font-bold"><Editable value={data.hari} path="hari" placeholder="............" /></span> tanggal <span className="font-bold"><Editable value={data.tanggal} path="tanggal" placeholder="............" /></span> (<span className="italic">{formatTerbilang(data.tanggal) || '............'}</span>) bulan <span className="font-bold"><Editable value={data.bulan} path="bulan" placeholder="............" /></span> tahun <span className="font-bold"><Editable value={data.tahun} path="tahun" placeholder="............" /></span> (<span className="italic">{formatTerbilang(data.tahun) || '............'}</span>), yang bertanda tangan di bawah ini:
           </p>
 
-          <div className="space-y-4 mb-6 pl-4">
+          <div className="space-y-4 mb-4 pl-4">
             <div className="flex gap-2">
               <span className="w-4">I.</span>
               <div className="flex-1">
@@ -278,11 +278,11 @@ const SkeletonInput = () => (
             </div>
           </div>
 
-          <p className="mb-4 text-justify">
+          <p className="mb-2 text-justify">
             PIHAK PERTAMA menyerahkan kepada PIHAK KEDUA dan PIHAK KEDUA menerima dari PIHAK PERTAMA Surat Pemberitahuan Pajak Terhutang (SPPT) dan buku DHKP 1, 2 dan 3 Pajak Bumi dan Bangunan (PBB) Sektor Perdesaan dan Perkotaan untuk wilayah Desa <Editable value={data.detailPenyerahan.kelurahan} path="detailPenyerahan.kelurahan" placeholder="................" /> Kecamatan <Editable value={data.detailPenyerahan.kecamatan} path="detailPenyerahan.kecamatan" placeholder="................" /> Kabupaten Ogan Komering Ulu Selatan Tahun <Editable value={data.detailPenyerahan.tahunPajak} path="detailPenyerahan.tahunPajak" placeholder="............" />, berupa :
           </p>
 
-            <div className="pl-4 mb-6 space-y-1 text-justify">
+            <div className="pl-4 mb-4 space-y-1 text-justify">
               <div className="flex gap-2">
                 <span>1.</span>
                 <p>Surat Pemberitahuan Pajak Terutang (SPPT) sebanyak <Editable value={data.detailPenyerahan.jumlahSPPT} path="detailPenyerahan.jumlahSPPT" placeholder="......" formatter={formatNumber} /> (<span className="italic">{formatTerbilang(data.detailPenyerahan.jumlahSPPT) || '......'}</span>) lembar.</p>
@@ -299,12 +299,12 @@ const SkeletonInput = () => (
             </div>
           </div>
 
-          <p className="mb-8 text-justify">
+          <p className="mb-6 text-justify">
             Demikian berita acara ini dibuat dalam rangkap 2 (dua) untuk dipergunakan sebagaimana mestinya.
           </p>
 
-          <div className="grid grid-cols-2 gap-8 text-center mb-8">
-            <div className="space-y-12">
+          <div className="grid grid-cols-2 gap-8 text-center mb-4">
+            <div className="space-y-8">
               <div>
                 <p>PIHAK KEDUA</p>
                 <p>&nbsp;</p>
@@ -319,7 +319,7 @@ const SkeletonInput = () => (
                 </p>
               </div>
             </div>
-            <div className="space-y-12">
+            <div className="space-y-8">
               <div>
                 <p>PIHAK PERTAMA</p>
                 <p>Camat <Editable value={data.detailPenyerahan.kecamatan} path="detailPenyerahan.kecamatan" placeholder="................" /></p>
@@ -332,11 +332,11 @@ const SkeletonInput = () => (
             </div>
           </div>
 
-          <div className="text-center mt-4">
+          <div className="text-center mt-2">
             <p className="font-bold uppercase leading-none">MENGETAHUI</p>
             <p className="font-bold leading-none">Kepala Badan Pendapatan Daerah</p>
             <p className="font-bold leading-none">Kabupaten Ogan Komering Ulu Selatan</p>
-            <div className="mt-10">
+            <div className="mt-6">
               <p className="font-bold underline uppercase">
                 <Editable value={settings.mengetahuiNama} path="mengetahuiNama" isSettings />
               </p>
@@ -775,7 +775,7 @@ export default function App() {
               <p>PIHAK KEDUA</p>
               <p>Camat ${currentData.detailPenyerahan.kecamatan || '................'}</p>
               <p>Kabupaten Ogan Komering Ulu Selatan</p>
-              <br/><br/><br/>
+              <br/><br/>
               <p><b><u>${currentData.pihakKedua.nama || '................................'}</u></b></p>
               <p>NIP. ${currentData.pihakKedua.nip || '................................'}</p>
             </td>
@@ -783,7 +783,7 @@ export default function App() {
               <p>PIHAK PERTAMA</p>
               <p>Kepala Badan Pendapatan Daerah</p>
               <p>Kabupaten Ogan Komering Ulu Selatan</p>
-              <br/><br/><br/>
+              <br/><br/>
               <p><b><u>${currentSettings.mengetahuiNama || '................................'}</u></b></p>
               <p>NIP. ${currentSettings.mengetahuiNip || '................................'}</p>
             </td>
@@ -858,11 +858,11 @@ export default function App() {
           Demikian berita acara ini dibuat dalam rangkap 2 (dua) untuk dipergunakan sebagaimana mestinya.
         </p>
         
-        <table width="100%" style="text-align: center; margin-bottom: 20px;">
+        <table width="100%" style="text-align: center; margin-bottom: 15px;">
           <tr>
             <td width="50%" valign="top">
               <p>PIHAK KEDUA</p>
-              <br/><br/><br/>
+              <br/><br/>
               <p><b><u>${currentData.pihakKedua.kosongkanData ? '................................' : (currentData.pihakKedua.nama || '................................')}</u></b></p>
               <p>NIP. ${currentData.pihakKedua.kosongkanData ? '................................' : (currentData.pihakKedua.nip || '................................')}</p>
             </td>
@@ -870,7 +870,7 @@ export default function App() {
               <p>PIHAK PERTAMA</p>
               <p>Camat ${currentData.detailPenyerahan.kecamatan || '................'}</p>
               <p>Kabupaten Ogan Komering Ulu Selatan</p>
-              <br/><br/><br/>
+              <br/><br/>
               <p><b><u>${currentData.pihakPertama.nama || '................................'}</u></b></p>
               <p>NIP. ${currentData.pihakPertama.nip || '................................'}</p>
             </td>
@@ -883,7 +883,7 @@ export default function App() {
               <p><b>MENGETAHUI</b></p>
               <p>Kepala Badan Pendapatan Daerah</p>
               <p>Kabupaten Ogan Komering Ulu Selatan</p>
-              <br/><br/><br/>
+              <br/><br/>
               <p><b><u>${currentSettings.mengetahuiNama || '................................'}</u></b></p>
               <p>NIP. ${currentSettings.mengetahuiNip || '................................'}</p>
             </td>
