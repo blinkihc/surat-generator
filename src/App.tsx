@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { GoogleGenAI, Type } from "@google/genai";
 import { 
   FileText, 
@@ -370,7 +371,26 @@ export default function App() {
   const [currentBatchPreviewIndex, setCurrentBatchPreviewIndex] = useState(0);
   const [isGeneratingBatch, setIsGeneratingBatch] = useState(false);
   const [batchProgress, setBatchProgress] = useState(0);
+  const [printData, setPrintData] = useState<PBBHandoverData[] | null>(null);
   const documentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (printData && printData.length > 0) {
+      // Small delay to ensure React has painted the DOM and images are loaded
+      const timer = setTimeout(() => {
+        window.print();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [printData]);
+
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      setPrintData(null);
+    };
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => window.removeEventListener('afterprint', handleAfterPrint);
+  }, []);
 
   useEffect(() => {
     const savedTemplates = localStorage.getItem('pbb_templates');
@@ -1026,13 +1046,23 @@ export default function App() {
   };
 
   const handlePrintBatchCurrent = () => {
-    window.print();
+    setPrintData([data]);
+  };
+
+  const handlePrintBatchAll = () => {
+    if (!batchPreviewData || batchPreviewData.length === 0) return;
+    setPrintData(batchPreviewData);
+  };
+
+  const handlePrintBatchSingle = () => {
+    if (!batchPreviewData) return;
+    setPrintData([batchPreviewData[currentBatchPreviewIndex]]);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
+    <div className="min-h-screen bg-slate-50 pb-20 no-print-root">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-40">
+      <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-40 no-print">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div 
             className="flex items-center gap-3 cursor-pointer group"
@@ -1134,7 +1164,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-8 no-print">
         <AnimatePresence mode="wait">
           {step === 1 ? (
             <motion.div 
@@ -1341,11 +1371,18 @@ export default function App() {
                               Download Semua (ZIP)
                             </button>
                             <button 
-                              onClick={handlePrintBatchCurrent}
+                              onClick={handlePrintBatchSingle}
                               className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white border border-slate-300 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors shadow-sm"
                             >
                               <Printer size={18} />
                               Cetak Dokumen Ini
+                            </button>
+                            <button 
+                              onClick={handlePrintBatchAll}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors shadow-sm"
+                            >
+                              <Printer size={18} />
+                              Cetak Semua ({batchPreviewData?.length || 0})
                             </button>
                           </>
                         )}
@@ -1722,7 +1759,7 @@ export default function App() {
 
       {/* Floating Action Button for Mobile */}
       {step === 2 && (
-        <div className="fixed bottom-6 right-6 lg:hidden flex flex-col gap-3">
+        <div className="fixed bottom-6 right-6 lg:hidden flex flex-col gap-3 fab-container no-print">
           <button 
             onClick={() => setShowSaveModal(true)}
             className="w-14 h-14 bg-white text-indigo-600 rounded-full shadow-lg border border-slate-200 flex items-center justify-center"
@@ -1763,10 +1800,24 @@ export default function App() {
           )}
         </div>
       )}
+      {/* Batch Print All Container */}
+      {printData && (
+        <div className="print-only-container">
+          {printData.map((item, index) => (
+            <div key={index} className="print:block">
+              <DocumentPreview 
+                data={item} 
+                settings={settings} 
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Modals */}
       <AnimatePresence>
         {showTemplates && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-container no-print">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1890,7 +1941,7 @@ export default function App() {
         )}
 
         {showHelp && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-container no-print">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1995,7 +2046,7 @@ export default function App() {
         )}
 
         {showSettings && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-container no-print">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -2158,7 +2209,7 @@ export default function App() {
         )}
 
         {showSaveModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-container no-print">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
