@@ -46,6 +46,7 @@ export interface AppSettings {
   nomorFormat: string;
   mengetahuiNama: string;
   mengetahuiNip: string;
+  customGeminiKey?: string;
 }
 
 export const initialSettings: AppSettings = {
@@ -57,6 +58,7 @@ export const initialSettings: AppSettings = {
   nomorFormat: "973/ /BAPENDA/2026",
   mengetahuiNama: "FIRMAN BASTARI, S.STP., M.Si",
   mengetahuiNip: "198204262001121003",
+  customGeminiKey: "",
 };
 
 export const initialData: PBBHandoverData = {

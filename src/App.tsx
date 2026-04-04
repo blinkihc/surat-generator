@@ -27,7 +27,10 @@ import {
   FileSpreadsheet,
   Archive,
   Heart,
-  Home
+  Home,
+  HelpCircle,
+  Zap,
+  Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
@@ -38,6 +41,21 @@ import jsPDF from 'jspdf';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+
+declare global {
+  interface Window {
+    aistudio?: {
+      hasSelectedApiKey: () => Promise<boolean>;
+      openSelectKey: () => Promise<void>;
+    };
+  }
+}
+
+const INPUT_CLASSES = "w-full px-4 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm hover:border-slate-300 placeholder:text-slate-400";
+
+const SkeletonInput = () => (
+  <div className="w-full h-[42px] bg-slate-100 rounded-xl animate-pulse border border-slate-100" />
+);
 
 const DocumentPreview = ({ 
   data, 
@@ -331,17 +349,19 @@ const DocumentPreview = ({
   );
 };
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
-
 export default function App() {
   const [data, setData] = useState<PBBHandoverData>(initialData);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isGeneratingWord, setIsGeneratingWord] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [previewMode, setPreviewMode] = useState(false);
   const [templates, setTemplates] = useState<SavedTemplate[]>([]);
   const [settings, setSettings] = useState<AppSettings>(initialSettings);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -386,11 +406,14 @@ export default function App() {
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setIsUploadingLogo(true);
     try {
       const base64 = await fileToBase64(file);
       saveSettings({ ...settings, kopLogoBase64: base64 });
     } catch (err) {
       console.error("Failed to upload logo", err);
+    } finally {
+      setIsUploadingLogo(false);
     }
   };
 
@@ -440,6 +463,8 @@ export default function App() {
 
     setIsAnalyzing(true);
     setError(null);
+    setShowTemplates(false);
+    setStep(2);
 
     try {
       const parts = [];
@@ -469,6 +494,9 @@ export default function App() {
       - detailPenyerahan: { tahunPajak, jumlahSPPT, jumlahBukuDHKP, totalKetetapan, kecamatan, kelurahan }
       
       Return ONLY the JSON object.`;
+
+      const apiKey = settings.customGeminiKey || process.env.API_KEY || process.env.GEMINI_API_KEY || "";
+      const ai = new GoogleGenAI({ apiKey });
 
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
@@ -521,8 +549,6 @@ export default function App() {
 
       const result = JSON.parse(response.text || "{}");
       setData((prev) => ({ ...prev, ...result }));
-      setStep(2);
-      setShowTemplates(false);
     } catch (err) {
       console.error(err);
       setError("Gagal menganalisa gambar. Pastikan gambar jelas dan coba lagi.");
@@ -542,21 +568,27 @@ export default function App() {
 
   const handleDownloadPDF = async () => {
     if (!documentRef.current) return;
-    
-    const canvas = await html2canvas(documentRef.current, {
-      scale: 2,
-      useCORS: true,
-      logging: false
-    });
-    
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', [215, 330]);
-    const imgProps = pdf.getImageProperties(imgData);
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-    
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`Berita_Acara_PBB_${data.detailPenyerahan.kelurahan || 'Dokumen'}.pdf`);
+    setIsGeneratingPDF(true);
+    try {
+      const canvas = await html2canvas(documentRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', [215, 330]);
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Berita_Acara_PBB_${data.detailPenyerahan.kelurahan || 'Dokumen'}.pdf`);
+    } catch (err) {
+      console.error("Failed to generate PDF", err);
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   const updateField = (path: string, value: any) => {
@@ -830,16 +862,23 @@ export default function App() {
     });
   };
 
-  const handleDownloadWord = () => {
-    const blob = generateDocxBlob(data, settings);
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Berita_Acara_PBB_${data.detailPenyerahan.kelurahan || 'Dokumen'}.doc`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  const handleDownloadWord = async () => {
+    setIsGeneratingWord(true);
+    try {
+      const blob = generateDocxBlob(data, settings);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Berita_Acara_PBB_${data.detailPenyerahan.kelurahan || 'Dokumen'}.doc`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to generate Word", err);
+    } finally {
+      setIsGeneratingWord(false);
+    }
   };
 
   const downloadExcelTemplate = () => {
@@ -994,6 +1033,15 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-2 sm:gap-3">
+            <motion.button 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowHelp(true)}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <HelpCircle size={18} />
+              <span className="hidden md:inline">Bantuan</span>
+            </motion.button>
             <motion.button 
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -1352,51 +1400,61 @@ export default function App() {
                   <div className="grid sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-semibold text-slate-500 uppercase">Nomor Berita Acara</label>
-                      <input 
-                        type="number"
-                        min="1"
-                        max="9999"
-                        value={data.nomorBeritaAcara}
-                        onChange={(e) => updateField('nomorBeritaAcara', e.target.value)}
-                        className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                        placeholder="Contoh: 123"
-                      />
+                      {isAnalyzing ? <SkeletonInput /> : (
+                        <input 
+                          type="number"
+                          min="1"
+                          max="9999"
+                          value={data.nomorBeritaAcara}
+                          onChange={(e) => updateField('nomorBeritaAcara', e.target.value)}
+                          className={INPUT_CLASSES}
+                          placeholder="Contoh: 123"
+                        />
+                      )}
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-semibold text-slate-500 uppercase">Hari</label>
-                      <input 
-                        value={data.hari}
-                        onChange={(e) => updateField('hari', e.target.value)}
-                        className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                        placeholder="Contoh: Senin"
-                      />
+                      {isAnalyzing ? <SkeletonInput /> : (
+                        <input 
+                          value={data.hari}
+                          onChange={(e) => updateField('hari', e.target.value)}
+                          className={INPUT_CLASSES}
+                          placeholder="Contoh: Senin"
+                        />
+                      )}
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-semibold text-slate-500 uppercase">Tanggal</label>
-                      <input 
-                        value={data.tanggal}
-                        onChange={(e) => updateField('tanggal', e.target.value)}
-                        className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                        placeholder="Contoh: 01"
-                      />
+                      {isAnalyzing ? <SkeletonInput /> : (
+                        <input 
+                          value={data.tanggal}
+                          onChange={(e) => updateField('tanggal', e.target.value)}
+                          className={INPUT_CLASSES}
+                          placeholder="Contoh: 01"
+                        />
+                      )}
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-semibold text-slate-500 uppercase">Bulan</label>
-                      <input 
-                        value={data.bulan}
-                        onChange={(e) => updateField('bulan', e.target.value)}
-                        className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                        placeholder="Contoh: Januari"
-                      />
+                      {isAnalyzing ? <SkeletonInput /> : (
+                        <input 
+                          value={data.bulan}
+                          onChange={(e) => updateField('bulan', e.target.value)}
+                          className={INPUT_CLASSES}
+                          placeholder="Contoh: Januari"
+                        />
+                      )}
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-semibold text-slate-500 uppercase">Tahun</label>
-                      <input 
-                        value={data.tahun}
-                        onChange={(e) => updateField('tahun', e.target.value)}
-                        className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                        placeholder="Contoh: 2024"
-                      />
+                      {isAnalyzing ? <SkeletonInput /> : (
+                        <input 
+                          value={data.tahun}
+                          onChange={(e) => updateField('tahun', e.target.value)}
+                          className={INPUT_CLASSES}
+                          placeholder="Contoh: 2024"
+                        />
+                      )}
                     </div>
                   </div>
                 </section>
@@ -1406,46 +1464,54 @@ export default function App() {
                     <User size={20} />
                     <h3 className="font-bold">Pihak Pertama (Penyerah)</h3>
                   </div>
-                  <div className="grid gap-3">
-                    {data.templateType === 'BA_DESA' && (
-                      <>
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-semibold text-slate-500 uppercase">Nama Lengkap</label>
+                    <div className="grid gap-3">
+                      {data.templateType === 'BA_DESA' && (
+                        <>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-semibold text-slate-500 uppercase">Nama Lengkap</label>
+                            {isAnalyzing ? <SkeletonInput /> : (
+                              <input 
+                                value={data.pihakPertama.nama}
+                                onChange={(e) => updateField('pihakPertama.nama', e.target.value)}
+                                className={INPUT_CLASSES}
+                              />
+                            )}
+                          </div>
+                          <div className="grid sm:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-semibold text-slate-500 uppercase">Jabatan</label>
+                              {isAnalyzing ? <SkeletonInput /> : (
+                                <input 
+                                  value={data.pihakPertama.jabatan}
+                                  onChange={(e) => updateField('pihakPertama.jabatan', e.target.value)}
+                                  className={INPUT_CLASSES}
+                                />
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-semibold text-slate-500 uppercase">NIP</label>
+                              {isAnalyzing ? <SkeletonInput /> : (
+                                <input 
+                                  value={data.pihakPertama.nip}
+                                  onChange={(e) => updateField('pihakPertama.nip', e.target.value)}
+                                  className={INPUT_CLASSES}
+                                />
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase">Instansi</label>
+                        {isAnalyzing ? <SkeletonInput /> : (
                           <input 
-                            value={data.pihakPertama.nama}
-                            onChange={(e) => updateField('pihakPertama.nama', e.target.value)}
-                            className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                            value={data.pihakPertama.instansi}
+                            onChange={(e) => updateField('pihakPertama.instansi', e.target.value)}
+                            className={INPUT_CLASSES}
                           />
-                        </div>
-                        <div className="grid sm:grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-semibold text-slate-500 uppercase">Jabatan</label>
-                            <input 
-                              value={data.pihakPertama.jabatan}
-                              onChange={(e) => updateField('pihakPertama.jabatan', e.target.value)}
-                              className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-semibold text-slate-500 uppercase">NIP</label>
-                            <input 
-                              value={data.pihakPertama.nip}
-                              onChange={(e) => updateField('pihakPertama.nip', e.target.value)}
-                              className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                            />
-                          </div>
-                        </div>
-                      </>
-                    )}
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-semibold text-slate-500 uppercase">Instansi</label>
-                      <input 
-                        value={data.pihakPertama.instansi}
-                        onChange={(e) => updateField('pihakPertama.instansi', e.target.value)}
-                        className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                      />
+                        )}
+                      </div>
                     </div>
-                  </div>
                 </section>
 
                 <section className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
@@ -1466,40 +1532,48 @@ export default function App() {
                       </label>
                     )}
                   </div>
-                  <div className={cn("grid gap-3 transition-opacity", data.pihakKedua.kosongkanData && data.templateType === 'BA_DESA' ? "opacity-50 pointer-events-none" : "")}>
+                  <div className={cn("grid gap-3 transition-opacity", (data.pihakKedua.kosongkanData && data.templateType === 'BA_DESA') || isAnalyzing ? "opacity-50 pointer-events-none" : "")}>
                     <div className="space-y-1">
                       <label className="text-[10px] font-semibold text-slate-500 uppercase">Nama Lengkap</label>
-                      <input 
-                        value={data.pihakKedua.nama}
-                        onChange={(e) => updateField('pihakKedua.nama', e.target.value)}
-                        className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                      />
+                      {isAnalyzing ? <SkeletonInput /> : (
+                        <input 
+                          value={data.pihakKedua.nama}
+                          onChange={(e) => updateField('pihakKedua.nama', e.target.value)}
+                          className={INPUT_CLASSES}
+                        />
+                      )}
                     </div>
                     <div className="grid sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <label className="text-[10px] font-semibold text-slate-500 uppercase">Jabatan</label>
-                        <input 
-                          value={data.pihakKedua.jabatan}
-                          onChange={(e) => updateField('pihakKedua.jabatan', e.target.value)}
-                          className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                        />
+                        {isAnalyzing ? <SkeletonInput /> : (
+                          <input 
+                            value={data.pihakKedua.jabatan}
+                            onChange={(e) => updateField('pihakKedua.jabatan', e.target.value)}
+                            className={INPUT_CLASSES}
+                          />
+                        )}
                       </div>
                       <div className="space-y-1">
                         <label className="text-[10px] font-semibold text-slate-500 uppercase">NIP</label>
-                        <input 
-                          value={data.pihakKedua.nip}
-                          onChange={(e) => updateField('pihakKedua.nip', e.target.value)}
-                          className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                        />
+                        {isAnalyzing ? <SkeletonInput /> : (
+                          <input 
+                            value={data.pihakKedua.nip}
+                            onChange={(e) => updateField('pihakKedua.nip', e.target.value)}
+                            className={INPUT_CLASSES}
+                          />
+                        )}
                       </div>
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-semibold text-slate-500 uppercase">Instansi</label>
-                      <input 
-                        value={data.pihakKedua.instansi}
-                        onChange={(e) => updateField('pihakKedua.instansi', e.target.value)}
-                        className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                      />
+                      {isAnalyzing ? <SkeletonInput /> : (
+                        <input 
+                          value={data.pihakKedua.instansi}
+                          onChange={(e) => updateField('pihakKedua.instansi', e.target.value)}
+                          className={INPUT_CLASSES}
+                        />
+                      )}
                     </div>
                   </div>
                 </section>
@@ -1512,52 +1586,64 @@ export default function App() {
                   <div className="grid sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-semibold text-slate-500 uppercase">Tahun Pajak</label>
-                      <input 
-                        value={data.detailPenyerahan.tahunPajak}
-                        onChange={(e) => updateField('detailPenyerahan.tahunPajak', e.target.value)}
-                        className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                      />
+                      {isAnalyzing ? <SkeletonInput /> : (
+                        <input 
+                          value={data.detailPenyerahan.tahunPajak}
+                          onChange={(e) => updateField('detailPenyerahan.tahunPajak', e.target.value)}
+                          className={INPUT_CLASSES}
+                        />
+                      )}
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-semibold text-slate-500 uppercase">Jumlah SPPT</label>
-                      <input 
-                        value={data.detailPenyerahan.jumlahSPPT}
-                        onChange={(e) => updateField('detailPenyerahan.jumlahSPPT', e.target.value)}
-                        className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                      />
+                      {isAnalyzing ? <SkeletonInput /> : (
+                        <input 
+                          value={data.detailPenyerahan.jumlahSPPT}
+                          onChange={(e) => updateField('detailPenyerahan.jumlahSPPT', e.target.value)}
+                          className={INPUT_CLASSES}
+                        />
+                      )}
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-semibold text-slate-500 uppercase">Jumlah Buku DHKP</label>
-                      <input 
-                        value={data.detailPenyerahan.jumlahBukuDHKP}
-                        onChange={(e) => updateField('detailPenyerahan.jumlahBukuDHKP', e.target.value)}
-                        className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                        placeholder="Contoh: 16"
-                      />
+                      {isAnalyzing ? <SkeletonInput /> : (
+                        <input 
+                          value={data.detailPenyerahan.jumlahBukuDHKP}
+                          onChange={(e) => updateField('detailPenyerahan.jumlahBukuDHKP', e.target.value)}
+                          className={INPUT_CLASSES}
+                          placeholder="Contoh: 16"
+                        />
+                      )}
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-semibold text-slate-500 uppercase">Total Ketetapan (Rp)</label>
-                      <input 
-                        value={data.detailPenyerahan.totalKetetapan}
-                        onChange={(e) => updateField('detailPenyerahan.totalKetetapan', e.target.value)}
-                        className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                      />
+                      {isAnalyzing ? <SkeletonInput /> : (
+                        <input 
+                          value={data.detailPenyerahan.totalKetetapan}
+                          onChange={(e) => updateField('detailPenyerahan.totalKetetapan', e.target.value)}
+                          className={INPUT_CLASSES}
+                        />
+                      )}
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-semibold text-slate-500 uppercase">Kecamatan</label>
-                      <input 
-                        value={data.detailPenyerahan.kecamatan}
-                        onChange={(e) => updateField('detailPenyerahan.kecamatan', e.target.value)}
-                        className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                      />
+                      {isAnalyzing ? <SkeletonInput /> : (
+                        <input 
+                          value={data.detailPenyerahan.kecamatan}
+                          onChange={(e) => updateField('detailPenyerahan.kecamatan', e.target.value)}
+                          className={INPUT_CLASSES}
+                        />
+                      )}
                     </div>
                     <div className="space-y-1 sm:col-span-2">
                       <label className="text-[10px] font-semibold text-slate-500 uppercase">Kelurahan/Desa</label>
-                      <input 
-                        value={data.detailPenyerahan.kelurahan}
-                        onChange={(e) => updateField('detailPenyerahan.kelurahan', e.target.value)}
-                        className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                      />
+                      {isAnalyzing ? <SkeletonInput /> : (
+                        <input 
+                          value={data.detailPenyerahan.kelurahan}
+                          onChange={(e) => updateField('detailPenyerahan.kelurahan', e.target.value)}
+                          className={INPUT_CLASSES}
+                        />
+                      )}
                     </div>
                   </div>
                 </section>
@@ -1578,17 +1664,19 @@ export default function App() {
                       </button>
                       <button 
                         onClick={handleDownloadWord}
-                        className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
+                        disabled={isGeneratingWord}
+                        className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-md transition-colors disabled:opacity-50"
                         title="Download DOCX"
                       >
-                        <FileText size={16} />
+                        {isGeneratingWord ? <RefreshCw size={16} className="animate-spin" /> : <FileText size={16} />}
                       </button>
                       <button 
                         onClick={handleDownloadPDF}
-                        className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-md transition-colors"
+                        disabled={isGeneratingPDF}
+                        className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-md transition-colors disabled:opacity-50"
                         title="Download PDF"
                       >
-                        <Download size={16} />
+                        {isGeneratingPDF ? <RefreshCw size={16} className="animate-spin" /> : <Download size={16} />}
                       </button>
                     </div>
                   </div>
@@ -1636,15 +1724,17 @@ export default function App() {
             <div className="flex flex-col gap-3">
               <button 
                 onClick={handleDownloadWord}
-                className="w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center"
+                disabled={isGeneratingWord}
+                className="w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center disabled:opacity-50"
               >
-                <FileText size={24} />
+                {isGeneratingWord ? <RefreshCw size={24} className="animate-spin" /> : <FileText size={24} />}
               </button>
               <button 
                 onClick={handleDownloadPDF}
-                className="w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center"
+                disabled={isGeneratingPDF}
+                className="w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg flex items-center justify-center disabled:opacity-50"
               >
-                <Download size={24} />
+                {isGeneratingPDF ? <RefreshCw size={24} className="animate-spin" /> : <Download size={24} />}
               </button>
             </div>
           )}
@@ -1776,6 +1866,111 @@ export default function App() {
           </div>
         )}
 
+        {showHelp && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowHelp(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
+                <div className="flex items-center gap-2 text-indigo-600">
+                  <HelpCircle size={20} />
+                  <h3 className="font-bold text-slate-900">Panduan Penggunaan</h3>
+                </div>
+                <button onClick={() => setShowHelp(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="p-8 overflow-y-auto space-y-10">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-indigo-600">
+                    <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                      <Zap size={18} />
+                    </div>
+                    <h4 className="font-bold text-lg">1. Mulai Cepat</h4>
+                  </div>
+                  <p className="text-slate-600 leading-relaxed">
+                    Anda bisa mulai dengan memilih <span className="font-bold text-slate-900">"Pilih Template"</span> untuk menggunakan data yang sudah disimpan, atau gunakan fitur <span className="font-bold text-slate-900">"Ekstrak Data (AI)"</span> dengan mengupload foto dokumen lama. AI akan otomatis mengisi form untuk Anda.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-indigo-600">
+                    <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                      <FileText size={18} />
+                    </div>
+                    <h4 className="font-bold text-lg">2. Pilih Format & Isi Data</h4>
+                  </div>
+                  <p className="text-slate-600 leading-relaxed">
+                    Pilih antara <span className="font-bold text-slate-900">BA Camat</span> (untuk tingkat Kecamatan) atau <span className="font-bold text-slate-900">BA Desa</span> (untuk tingkat Kelurahan/Desa). Isi semua field yang diperlukan seperti Nomor Berita Acara, Tanggal, dan Detail Penyerahan.
+                  </p>
+                  <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl flex gap-3">
+                    <AlertCircle className="text-amber-600 shrink-0" size={20} />
+                    <p className="text-sm text-amber-800">
+                      Untuk BA Desa, Anda bisa mencentang <span className="font-bold">"Kosongkan Isian"</span> pada Pihak Kedua jika ingin mengisi data penerima secara manual setelah dicetak.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-indigo-600">
+                    <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                      <FileSpreadsheet size={18} />
+                    </div>
+                    <h4 className="font-bold text-lg">3. Proses Banyak Sekaligus (Batch)</h4>
+                  </div>
+                  <p className="text-slate-600 leading-relaxed">
+                    Gunakan fitur <span className="font-bold text-slate-900">"Batch Processing"</span> untuk membuat banyak dokumen sekaligus. Download template Excel yang disediakan, isi datanya, lalu upload kembali. Sistem akan men-generate semua dokumen dalam satu file ZIP.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-indigo-600">
+                    <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                      <Settings size={18} />
+                    </div>
+                    <h4 className="font-bold text-lg">4. Kustomisasi Kop & Logo</h4>
+                  </div>
+                  <p className="text-slate-600 leading-relaxed">
+                    Klik tombol <span className="font-bold text-slate-900">"Pengaturan"</span> di header untuk mengubah teks Kop Surat, Alamat, dan mengupload Logo instansi Anda. Pengaturan ini akan tersimpan otomatis di browser Anda.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-indigo-600">
+                    <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                      <Download size={18} />
+                    </div>
+                    <h4 className="font-bold text-lg">5. Preview & Ekspor</h4>
+                  </div>
+                  <p className="text-slate-600 leading-relaxed">
+                    Lihat hasil dokumen secara real-time di panel Preview. Anda bisa mendownload dokumen dalam format <span className="font-bold text-slate-900">PDF</span>, <span className="font-bold text-slate-900">Word (DOCX)</span>, atau langsung <span className="font-bold text-slate-900">Cetak</span> menggunakan printer.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="px-6 py-6 border-t border-slate-100 bg-slate-50 flex justify-center">
+                <button 
+                  onClick={() => setShowHelp(false)}
+                  className="w-full sm:w-auto px-12 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 hover:shadow-indigo-300 active:scale-95"
+                >
+                  Saya Mengerti, Mulai Sekarang
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {showSettings && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
@@ -1809,9 +2004,18 @@ export default function App() {
                       )}
                     </div>
                     <div>
-                      <label className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 cursor-pointer inline-block">
-                        Upload Logo
-                        <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                      <label className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 cursor-pointer inline-block flex items-center gap-2">
+                        {isUploadingLogo ? (
+                          <>
+                            <RefreshCw size={16} className="animate-spin text-indigo-600" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            Upload Logo
+                            <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                          </>
+                        )}
                       </label>
                       <p className="text-xs text-slate-500 mt-2">Gunakan gambar dengan background transparan (PNG) untuk hasil terbaik.</p>
                     </div>
@@ -1823,7 +2027,7 @@ export default function App() {
                   <input 
                     value={settings.kopLine1}
                     onChange={(e) => saveSettings({ ...settings, kopLine1: e.target.value })}
-                    className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    className={INPUT_CLASSES}
                   />
                 </div>
                 <div className="space-y-1">
@@ -1831,7 +2035,7 @@ export default function App() {
                   <input 
                     value={settings.kopLine2}
                     onChange={(e) => saveSettings({ ...settings, kopLine2: e.target.value })}
-                    className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    className={INPUT_CLASSES}
                   />
                 </div>
                 <div className="space-y-1">
@@ -1839,7 +2043,7 @@ export default function App() {
                   <input 
                     value={settings.kopLine3 || ''}
                     onChange={(e) => saveSettings({ ...settings, kopLine3: e.target.value })}
-                    className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    className={INPUT_CLASSES}
                   />
                 </div>
                 <div className="space-y-1">
@@ -1847,7 +2051,7 @@ export default function App() {
                   <input 
                     value={settings.kopAddress}
                     onChange={(e) => saveSettings({ ...settings, kopAddress: e.target.value })}
-                    className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    className={INPUT_CLASSES}
                   />
                 </div>
                 <div className="space-y-1">
@@ -1855,7 +2059,7 @@ export default function App() {
                   <input 
                     value={settings.nomorFormat || ''}
                     onChange={(e) => saveSettings({ ...settings, nomorFormat: e.target.value })}
-                    className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    className={INPUT_CLASSES}
                     placeholder="Contoh: 973/ /BAPENDA/2026"
                   />
                 </div>
@@ -1868,7 +2072,7 @@ export default function App() {
                       <input 
                         value={settings.mengetahuiNama}
                         onChange={(e) => saveSettings({ ...settings, mengetahuiNama: e.target.value })}
-                        className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                        className={INPUT_CLASSES}
                       />
                     </div>
                     <div className="space-y-1">
@@ -1876,9 +2080,45 @@ export default function App() {
                       <input 
                         value={settings.mengetahuiNip}
                         onChange={(e) => saveSettings({ ...settings, mengetahuiNip: e.target.value })}
-                        className="w-full px-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                        className={INPUT_CLASSES}
                       />
                     </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100">
+                  <h4 className="text-xs font-bold text-slate-900 mb-3 uppercase tracking-wider">Kecerdasan Buatan (AI)</h4>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase">Gemini API Key (Opsional)</label>
+                    <input 
+                      type="password"
+                      value={settings.customGeminiKey || ''}
+                      onChange={(e) => saveSettings({ ...settings, customGeminiKey: e.target.value })}
+                      className={INPUT_CLASSES}
+                      placeholder="Masukkan API Key Anda jika ada"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                      Kosongkan untuk menggunakan API Key default sistem. API Key Anda akan disimpan secara lokal di browser ini.
+                    </p>
+                  </div>
+                  
+                  <div className="pt-2">
+                    <button 
+                      onClick={async () => {
+                        if (window.aistudio) {
+                          await window.aistudio.openSelectKey();
+                        } else {
+                          alert("Fitur ini hanya tersedia di lingkungan AI Studio.");
+                        }
+                      }}
+                      className="w-full py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Zap size={14} className="text-amber-500" />
+                      Gunakan API Key dari AI Studio
+                    </button>
+                    <p className="text-[9px] text-slate-400 mt-1 text-center">
+                      Gunakan opsi ini jika Anda ingin menggunakan API Key berbayar dari Google Cloud.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1924,7 +2164,7 @@ export default function App() {
                       value={templateName}
                       onChange={(e) => setTemplateName(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && saveTemplate()}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                      className={INPUT_CLASSES}
                       placeholder="Contoh: Template Kelurahan Merdeka"
                     />
                   </div>
@@ -1968,8 +2208,15 @@ export default function App() {
           <p className="text-sm text-slate-500 flex items-center justify-center gap-1.5 font-medium">
             Made with <Heart size={16} className="text-red-500 fill-red-500 animate-pulse" /> by <span className="text-slate-900 font-bold">Ucup</span> @2026
           </p>
-          <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
-            PBB Handover Generator v2.0
+          <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold flex items-center gap-4">
+            <span>PBB Handover Generator v2.0</span>
+            <span className="w-1 h-1 bg-slate-200 rounded-full" />
+            <button 
+              onClick={() => setShowHelp(true)}
+              className="text-indigo-500 hover:text-indigo-600 transition-colors"
+            >
+              Butuh bantuan?
+            </button>
           </p>
         </div>
       </footer>
