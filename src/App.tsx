@@ -90,8 +90,7 @@ const SkeletonInput = () => (
   return (
     <div 
       ref={documentRef}
-      className="w-[215mm] bg-white px-[20mm] py-[15mm] text-slate-900 font-['Arial',sans-serif] leading-relaxed text-[11pt] shrink-0 shadow-xl print-area"
-      style={{ minHeight: '330mm' }}
+      className="w-[215mm] bg-white px-[20mm] pt-[10mm] pb-[15mm] text-slate-900 font-['Arial',sans-serif] leading-relaxed text-[11pt] shrink-0 shadow-xl print-area"
     >
       {/* Kop Surat */}
       <div className="flex items-center border-b-[3px] border-slate-900 pb-2 mb-0.5 relative">
@@ -1804,7 +1803,7 @@ export default function App() {
       {printData && (
         <div className="print-only-container">
           {printData.map((item, index) => (
-            <div key={index} className="print:block">
+            <div key={index} className="print-page-wrapper">
               <DocumentPreview 
                 data={item} 
                 settings={settings} 

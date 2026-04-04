@@ -59,15 +59,22 @@
     background: white !important;
   }
 
+  .print-page-wrapper {
+    display: block !important;
+    page-break-after: always !important;
+  }
+
+  .print-page-wrapper:last-child {
+    page-break-after: auto !important;
+  }
+
   .print-area {
     display: block !important;
     margin: 0 auto !important;
-    padding: 15mm 20mm !important;
+    padding: 10mm 20mm 15mm 20mm !important;
     width: 215mm !important;
-    min-height: 330mm !important;
     box-shadow: none !important;
     transform: none !important;
-    page-break-after: always !important;
     page-break-inside: avoid !important;
     background: white !important;
   }
