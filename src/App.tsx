@@ -91,7 +91,7 @@ const SkeletonInput = () => (
   return (
     <div 
       ref={documentRef}
-      className="w-[215mm] bg-white px-[20mm] pt-[10mm] pb-[15mm] text-slate-900 font-['Arial',sans-serif] leading-relaxed text-[11pt] shrink-0 shadow-xl print-area"
+      className="w-[210mm] min-h-[297mm] box-border bg-white px-[20mm] pt-[10mm] pb-[15mm] text-slate-900 font-['Arial',sans-serif] leading-[1.5] text-[11pt] shrink-0 shadow-xl print-area"
     >
       {/* Kop Surat */}
       <div className="flex items-center border-b-[3px] border-slate-900 pb-2 mb-0.5 relative">
@@ -156,9 +156,9 @@ const SkeletonInput = () => (
               <span className="w-4">II.</span>
               <div className="flex-1">
                 <div className="grid grid-cols-[100px_10px_1fr] gap-1">
-                  <span>Nama/NIP</span>
+                  <span>Nama</span>
                   <span>:</span>
-                  <span className="font-bold uppercase"><Editable value={data.pihakKedua.nama} path="pihakKedua.nama" /> / NIP. <Editable value={data.pihakKedua.nip} path="pihakKedua.nip" /></span>
+                  <span className="font-bold uppercase"><Editable value={data.pihakKedua.nama} path="pihakKedua.nama" /></span>
                 </div>
                 <div className="grid grid-cols-[100px_10px_1fr] gap-1">
                   <span>Jabatan</span>
@@ -205,7 +205,6 @@ const SkeletonInput = () => (
               </div>
               <div>
                 <p className="font-bold underline uppercase"><Editable value={data.pihakKedua.nama} path="pihakKedua.nama" /></p>
-                <p>NIP. <Editable value={data.pihakKedua.nip} path="pihakKedua.nip" /></p>
               </div>
             </div>
             <div className="space-y-8">
@@ -260,13 +259,10 @@ const SkeletonInput = () => (
               <span className="w-4">II.</span>
               <div className="flex-1">
                 <div className="grid grid-cols-[100px_10px_1fr] gap-1">
-                  <span>Nama/NIP</span>
+                  <span>Nama</span>
                   <span>:</span>
                   <span className="font-bold uppercase">
                     <Editable value={data.pihakKedua.kosongkanData ? '................................' : data.pihakKedua.nama} path="pihakKedua.nama" />
-                    {!data.pihakKedua.kosongkanData && (
-                      <> / NIP. <Editable value={data.pihakKedua.nip} path="pihakKedua.nip" /></>
-                    )}
                   </span>
                 </div>
                 <div className="grid grid-cols-[100px_10px_1fr] gap-1">
@@ -308,15 +304,12 @@ const SkeletonInput = () => (
             <div className="space-y-8">
               <div>
                 <p>PIHAK KEDUA</p>
-                <p>&nbsp;</p>
-                <p>&nbsp;</p>
+                <p>Kepala Desa <Editable value={data.detailPenyerahan.kelurahan} path="detailPenyerahan.kelurahan" placeholder="................" /></p>
+                <p>Kecamatan <Editable value={data.detailPenyerahan.kecamatan} path="detailPenyerahan.kecamatan" placeholder="................" /></p>
               </div>
               <div>
                 <p className="font-bold underline uppercase">
                   {data.pihakKedua.kosongkanData ? <>&nbsp;</> : <Editable value={data.pihakKedua.nama} path="pihakKedua.nama" />}
-                </p>
-                <p>
-                  {data.pihakKedua.kosongkanData ? <>&nbsp;</> : <>NIP. <Editable value={data.pihakKedua.nip} path="pihakKedua.nip" /></>}
                 </p>
               </div>
             </div>
@@ -606,32 +599,68 @@ export default function App() {
   const handleDownloadPDF = async () => {
     if (!documentRef.current) return;
     setIsGeneratingPDF(true);
+    let exportHost: HTMLDivElement | null = null;
     try {
-      const canvas = await html2canvas(documentRef.current, {
+      const source = documentRef.current;
+      exportHost = document.createElement('div');
+      exportHost.style.position = 'fixed';
+      exportHost.style.left = '-10000px';
+      exportHost.style.top = '0';
+      exportHost.style.width = '210mm';
+      exportHost.style.background = '#ffffff';
+      exportHost.style.pointerEvents = 'none';
+      exportHost.style.zIndex = '-1';
+
+      const exportNode = source.cloneNode(true) as HTMLDivElement;
+      exportNode.style.width = '210mm';
+      exportNode.style.minHeight = '297mm';
+      exportNode.style.boxSizing = 'border-box';
+      exportNode.style.boxShadow = 'none';
+      exportNode.style.margin = '0';
+      exportNode.style.transform = 'none';
+      exportNode.style.background = '#ffffff';
+      exportNode.querySelectorAll('[contenteditable]').forEach((element) => {
+        element.removeAttribute('contenteditable');
+      });
+
+      exportHost.appendChild(exportNode);
+      document.body.appendChild(exportHost);
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+
+      const canvas = await html2canvas(exportNode, {
         scale: 2,
         useCORS: true,
-        logging: false
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: exportNode.scrollWidth,
+        height: exportNode.scrollHeight,
+        windowWidth: exportNode.scrollWidth,
+        windowHeight: exportNode.scrollHeight,
       });
       
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', [215, 330]);
-      const imgProps = pdf.getImageProperties(imgData);
-      let pdfWidth = pdf.internal.pageSize.getWidth();
-      let pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      
-      let xOffset = 0;
-      if (pdfHeight > 330) {
-        const scaleFactor = 330 / pdfHeight;
-        pdfWidth = pdfWidth * scaleFactor;
-        pdfHeight = 330;
-        xOffset = (215 - pdfWidth) / 2;
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const pdf = new jsPDF('p', 'mm', [pageWidth, pageHeight]);
+      const imgHeight = (canvas.height * pageWidth) / canvas.width;
+
+      let position = 0;
+      let remainingHeight = imgHeight;
+      pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight);
+      remainingHeight -= pageHeight;
+
+      while (remainingHeight > 0) {
+        position -= pageHeight;
+        pdf.addPage([pageWidth, pageHeight], 'p');
+        pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight);
+        remainingHeight -= pageHeight;
       }
-      
-      pdf.addImage(imgData, 'PNG', xOffset, 0, pdfWidth, pdfHeight);
+
       pdf.save(`Berita_Acara_PBB_${data.detailPenyerahan.kelurahan || 'Dokumen'}.pdf`);
     } catch (err) {
       console.error("Failed to generate PDF", err);
     } finally {
+      exportHost?.remove();
       setIsGeneratingPDF(false);
     }
   };
@@ -751,7 +780,7 @@ export default function App() {
             <td width="5%" valign="top">II.</td>
             <td width="95%">
               <table width="100%">
-                <tr><td width="20%">Nama/NIP</td><td width="5%">:</td><td><b>${currentData.pihakKedua.nama || '................................'} / NIP. ${currentData.pihakKedua.nip || '................................'}</b></td></tr>
+                <tr><td width="20%">Nama</td><td width="5%">:</td><td><b>${currentData.pihakKedua.nama || '................................'}</b></td></tr>
                 <tr><td>Jabatan</td><td>:</td><td>${currentData.pihakKedua.jabatan || '................................'}</td></tr>
               </table>
               <p>Selanjutnya disebut sebagai PIHAK KEDUA</p>
@@ -795,7 +824,6 @@ export default function App() {
               <p>Kabupaten Ogan Komering Ulu Selatan</p>
               <br/><br/>
               <p><b><u>${currentData.pihakKedua.nama || '................................'}</u></b></p>
-              <p>NIP. ${currentData.pihakKedua.nip || '................................'}</p>
             </td>
             <td width="50%" valign="top">
               <p>PIHAK PERTAMA</p>
@@ -841,7 +869,7 @@ export default function App() {
             <td width="5%" valign="top">II.</td>
             <td width="95%">
               <table width="100%">
-                <tr><td width="20%">Nama/NIP</td><td width="5%">:</td><td><b>${currentData.pihakKedua.kosongkanData ? '................................' : `${currentData.pihakKedua.nama || '................................'} / NIP. ${currentData.pihakKedua.nip || '................................'}`}</b></td></tr>
+                <tr><td width="20%">Nama</td><td width="5%">:</td><td><b>${currentData.pihakKedua.kosongkanData ? '................................' : (currentData.pihakKedua.nama || '................................')}</b></td></tr>
                 <tr><td>Jabatan</td><td>:</td><td>${currentData.pihakKedua.kosongkanData ? '................................' : (currentData.pihakKedua.jabatan || '................................')}</td></tr>
               </table>
               <p>Selanjutnya disebut sebagai PIHAK KEDUA</p>
@@ -880,9 +908,10 @@ export default function App() {
           <tr>
             <td width="50%" valign="top">
               <p>PIHAK KEDUA</p>
+              <p>Kepala Desa ${currentData.detailPenyerahan.kelurahan || '................'}</p>
+              <p>Kecamatan ${currentData.detailPenyerahan.kecamatan || '................'}</p>
               <br/><br/>
               <p><b><u>${currentData.pihakKedua.kosongkanData ? '................................' : (currentData.pihakKedua.nama || '................................')}</u></b></p>
-              <p>NIP. ${currentData.pihakKedua.kosongkanData ? '................................' : (currentData.pihakKedua.nip || '................................')}</p>
             </td>
             <td width="50%" valign="top">
               <p>PIHAK PERTAMA</p>
@@ -917,15 +946,17 @@ export default function App() {
         <title>Berita Acara</title>
         <style>
           @page WordSection1 {
-            size: 21.5cm 33.0cm;
+            size: 21.0cm 29.7cm;
             margin: 1.0cm 2.0cm 1.5cm 2.0cm;
             mso-header-margin: 35.4pt;
             mso-footer-margin: 35.4pt;
             mso-paper-source: 0;
           }
           div.WordSection1 { page: WordSection1; }
-          body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.5; }
-          p { margin: 0; padding: 0; }
+          body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.5; margin: 0; }
+          p { margin: 0; padding: 0; line-height: 1.5; }
+          table { border-collapse: collapse; border-spacing: 0; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+          td { padding: 0; line-height: 1.5; }
         </style>
       </head>
       <body>
@@ -964,7 +995,7 @@ export default function App() {
     const headers = [
       'templateType', 'nomorBeritaAcara', 'hari', 'tanggal', 'bulan', 'tahun',
       'pihakPertama_nama', 'pihakPertama_jabatan', 'pihakPertama_nip',
-      'pihakKedua_nama', 'pihakKedua_jabatan', 'pihakKedua_nip', 'pihakKedua_kosongkanData',
+      'pihakKedua_nama', 'pihakKedua_jabatan', 'pihakKedua_kosongkanData',
       'detailPenyerahan_tahunPajak', 'detailPenyerahan_jumlahSPPT', 'detailPenyerahan_jumlahBukuDHKP',
       'detailPenyerahan_totalKetetapan', 'detailPenyerahan_kecamatan', 'detailPenyerahan_kelurahan'
     ];
@@ -972,7 +1003,7 @@ export default function App() {
     const sampleRow = [
       'BA_DESA', '123', 'Senin', '01', 'Januari', '2026',
       'Andi Wijaya', 'Camat Muaradua', '198001012005011001',
-      'Budi Santoso', 'Kepala Desa', '198502022010011002', 'false',
+      'Budi Santoso', 'Kepala Desa', 'false',
       '2026', '500', '5',
       '1500000', 'Muaradua', 'Batu Belang Jaya'
     ];
@@ -1029,7 +1060,7 @@ export default function App() {
         pihakKedua: {
           nama: row.pihakKedua_nama || '',
           jabatan: row.pihakKedua_jabatan || '',
-          nip: row.pihakKedua_nip || '',
+          nip: '',
           instansi: '',
           kosongkanData: String(row.pihakKedua_kosongkanData).toLowerCase() === 'true'
         },
@@ -1669,27 +1700,15 @@ export default function App() {
                         />
                       )}
                     </div>
-                    <div className="grid sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-semibold text-slate-500 uppercase">Jabatan</label>
-                        {isAnalyzing ? <SkeletonInput /> : (
-                          <input 
-                            value={data.pihakKedua.jabatan}
-                            onChange={(e) => updateField('pihakKedua.jabatan', e.target.value)}
-                            className={INPUT_CLASSES}
-                          />
-                        )}
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-semibold text-slate-500 uppercase">NIP</label>
-                        {isAnalyzing ? <SkeletonInput /> : (
-                          <input 
-                            value={data.pihakKedua.nip}
-                            onChange={(e) => updateField('pihakKedua.nip', e.target.value)}
-                            className={INPUT_CLASSES}
-                          />
-                        )}
-                      </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-semibold text-slate-500 uppercase">Jabatan</label>
+                      {isAnalyzing ? <SkeletonInput /> : (
+                        <input 
+                          value={data.pihakKedua.jabatan}
+                          onChange={(e) => updateField('pihakKedua.jabatan', e.target.value)}
+                          className={INPUT_CLASSES}
+                        />
+                      )}
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-semibold text-slate-500 uppercase">Instansi</label>

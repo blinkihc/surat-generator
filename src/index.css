@@ -71,7 +71,7 @@
   .print-area {
     display: block !important;
     margin: 0 auto !important;
-    width: 215mm !important;
+    width: 210mm !important;
     box-shadow: none !important;
     transform: none !important;
     page-break-inside: avoid !important;
@@ -86,7 +86,7 @@
   }
 
   @page {
-    size: 215mm 330mm;
+    size: A4;
     margin: 0;
   }
 }
